@@ -1,0 +1,10 @@
+export default function ChatsPage() {
+  return (
+    <div className="rounded-2xl bg-white p-6 shadow">
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">Чатове</h1>
+      <p className="text-gray-700">
+        Placeholder страница. Тук ще направим chat list + messages.
+      </p>
+    </div>
+  );
+}
