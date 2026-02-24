@@ -15,8 +15,17 @@ export async function createUserProfile(params: {
     uid: params.uid,
     name: params.name.trim(),
     email: params.email.trim().toLowerCase(),
+
+    // ✅ запазваме и region, и city (за да не се чупи UI)
     region: params.region,
+    city: params.region,
+
     role: params.role,
+
+    // ✅ default за avatar
+    avatarUrl: "",
+    avatarPath: "",
+
     createdAt: serverTimestamp(),
   };
 

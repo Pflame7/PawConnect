@@ -1,7 +1,8 @@
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { auth } from "../../services/firebase";
-import { getUserProfile } from "../../services/users";
+import { doc, onSnapshot } from "firebase/firestore";
+
+import { auth, db } from "../../services/firebase";
 import type { UserProfile } from "../../types/user";
 import { AuthContext } from "./auth-context";
 
@@ -11,8 +12,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
+    let unsubProfile: (() => void) | null = null;
+
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
+
+      // stop old profile listener
+      if (unsubProfile) {
+        unsubProfile();
+        unsubProfile = null;
+      }
 
       if (!u) {
         setProfile(null);
@@ -20,24 +29,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      try {
-        const p = await getUserProfile(u.uid);
-        setProfile(p);
-      } catch (e) {
-        console.error(e);
-        setProfile(null);
-      } finally {
-        setLoading(false);
-      }
+      // ✅ realtime profile
+      const ref = doc(db, "users", u.uid);
+      unsubProfile = onSnapshot(
+        ref,
+        (snap) => {
+          setProfile(snap.exists() ? (snap.data() as UserProfile) : null);
+          setLoading(false);
+        },
+        (err) => {
+          console.error(err);
+          setProfile(null);
+          setLoading(false);
+        }
+      );
     });
 
-    return () => unsub();
+    return () => {
+      unsubAuth();
+      if (unsubProfile) unsubProfile();
+    };
   }, []);
 
-  const value = useMemo(
-    () => ({ user, profile, loading }),
-    [user, profile, loading]
-  );
+  const value = useMemo(() => ({ user, profile, loading }), [user, profile, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
