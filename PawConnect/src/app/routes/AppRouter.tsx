@@ -10,6 +10,7 @@ import ProfilePage from "../../pages/Profile/ProfilePage";
 import CareTakersPage from "../../pages/CareTakers/CareTakersPage";
 import PetDetailsPage from "../../pages/Pets/PetDetailsPage";
 import CaretakerDetailsPage from "../../pages/CareTakers/CaretakerDetailsPage";
+import SettingsPage from "../../pages/Settings/SettingsPage";
 
 
 
@@ -49,6 +50,7 @@ export function AppRouter() {
         <Route path="caretakers/:caretakerId" element={<CaretakerDetailsPage />} />
         <Route path="chats" element={<ChatsPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

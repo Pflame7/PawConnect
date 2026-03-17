@@ -35,11 +35,10 @@ export const PET_TRAITS = [
   "Срамежливо",
 ] as const;
 
-export type PetGender = "male" | "female" | "";
-export type PetSize = "small" | "medium" | "large" | "giant" | "";
+export type PetGender = "male" | "female";
+export type PetSize = "small" | "medium" | "large" | "giant";
 
 export const SIZE_OPTIONS: { value: PetSize; label: string }[] = [
-  { value: "", label: "Избери" },
   { value: "small", label: "Малко (до 10кг)" },
   { value: "medium", label: "Средно (10–25кг)" },
   { value: "large", label: "Голямо (25–45кг)" },
@@ -47,7 +46,6 @@ export const SIZE_OPTIONS: { value: PetSize; label: string }[] = [
 ];
 
 export const GENDER_OPTIONS: { value: PetGender; label: string }[] = [
-  { value: "", label: "Избери" },
   { value: "male", label: "Мъжко" },
   { value: "female", label: "Женско" },
 ];

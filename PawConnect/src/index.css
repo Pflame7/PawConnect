@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tailwindcss/utilities";
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* базово UX поведение за кликаеми елементи */
 button,

@@ -3,7 +3,8 @@ export type CaretakerService =
   | "Разходки"
   | "Дневна грижа"
   | "Ветеринарни посещения"
-  | "Хранене";
+  | "Хранене"
+  | "Транспорт";
 
 export type CaretakerReview = {
   id: string;
@@ -20,20 +21,14 @@ export type Caretaker = {
   name: string;
   city: string;
   area?: string;
-
   avatarUrl: string;
-
   verified?: boolean;
-
   pricePerDay: number;
   rating: number; // 0..5
   reviewsCount: number;
-
   shortBio: string;
   about: string;
   experience: string;
-
   services: CaretakerService[];
-
   reviews?: CaretakerReview[];
 };

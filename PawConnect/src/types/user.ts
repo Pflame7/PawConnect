@@ -1,12 +1,16 @@
 export type UserRole = "owner" | "caretaker";
 
+export type UserSettings = {
+  messageNotifications: boolean;
+  darkMode: boolean;
+};
+
 export type UserProfile = {
   uid: string;
 
   name: string;
   email: string;
 
-  // в твоя проект понякога е region, понякога city
   region?: string;
   city?: string;
 
@@ -16,16 +20,16 @@ export type UserProfile = {
 
   role: UserRole;
 
-  // caretaker-only
   experience?: string;
   pricePerDay?: number;
   services?: string[];
 
-  // ✅ профилна снимка (Supabase)
   avatarUrl?: string;
   avatarPath?: string;
 
   verified?: boolean;
+
+  settings?: UserSettings;
 
   createdAt?: unknown;
   updatedAt?: unknown;

@@ -1,7 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
+import SearchableSelect from "../../components/ui/SearchableSelect";
 import {
-  BREEDS,
-  CITIES,
+  ANIMAL_TYPES,
+  BREEDS_BY_ANIMAL,
+  BULGARIAN_CITIES,
+  type AnimalType,
+} from "../../constants/formOptions";
+import {
   GENDER_OPTIONS,
   SIZE_OPTIONS,
   PET_TRAITS,
@@ -9,31 +14,36 @@ import {
   type PetSize,
 } from "../../pages/Pets/pets.data";
 
-export type NewPetDraft = {
-  // снимка (засега само локално preview)
-  photoFile?: File | null;
+const FIELD_LIMITS = {
+  name: 25,
+  area: 50,
+  description: 400,
+} as const;
 
+export type NewPetDraft = {
+  photoFile?: File | null;
+  animalType: AnimalType | "";
   name: string;
   breed: string;
   gender: PetGender;
   size: PetSize;
-
   ageYears: number;
   ageMonths: number;
   weightKg: number;
-
   city: string;
   area: string;
-
   traits: string[];
   friendlyWithDogs: boolean;
   goodWithKids: boolean;
-
   description: string;
 };
 
-function cn(...classes: Array<string | false | undefined | null>) {
+function cn(...classes: Array<string | false | undefined | null>): string {
   return classes.filter(Boolean).join(" ");
+}
+
+function isAnimalType(value: string): value is AnimalType {
+  return ANIMAL_TYPES.includes(value as AnimalType);
 }
 
 export default function AddPetModal({
@@ -48,15 +58,17 @@ export default function AddPetModal({
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+
   const photoUrl = useMemo(() => {
     if (!photoFile) return "";
     return URL.createObjectURL(photoFile);
   }, [photoFile]);
 
+  const [animalType, setAnimalType] = useState<AnimalType | "">("");
   const [name, setName] = useState("");
   const [breed, setBreed] = useState("");
-  const [gender, setGender] = useState<PetGender>("");
-  const [size, setSize] = useState<PetSize>("");
+  const [gender, setGender] = useState<PetGender>("male");
+  const [size, setSize] = useState<PetSize>("small");
 
   const [ageYears, setAgeYears] = useState(0);
   const [ageMonths, setAgeMonths] = useState(0);
@@ -70,35 +82,45 @@ export default function AddPetModal({
   const [goodWithKids, setGoodWithKids] = useState(false);
 
   const [description, setDescription] = useState("");
+  const [error, setError] = useState("");
 
-  const [error, setError] = useState<string>("");
+  useEffect(() => {
+    if (!photoUrl) return;
 
-  // ESC + lock scroll
+    return () => {
+      URL.revokeObjectURL(photoUrl);
+    };
+  }, [photoUrl]);
+
+  const breedOptions = useMemo(() => {
+    if (!animalType) return [];
+    return BREEDS_BY_ANIMAL[animalType];
+  }, [animalType]);
+
   useEffect(() => {
     if (!open) return;
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
     };
 
     document.addEventListener("keydown", onKeyDown);
-    const prev = document.body.style.overflow;
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = prev;
-      // revoke blob url
-      if (photoUrl) URL.revokeObjectURL(photoUrl);
+      document.body.style.overflow = previousOverflow;
     };
-  }, [open, onClose, photoUrl]);
+  }, [open, onClose]);
 
-  function resetForm() {
+  function resetForm(): void {
     setPhotoFile(null);
+    setAnimalType("");
     setName("");
     setBreed("");
-    setGender("");
-    setSize("");
+    setGender("male");
+    setSize("small");
     setAgeYears(0);
     setAgeMonths(0);
     setWeightKg(0);
@@ -111,31 +133,66 @@ export default function AddPetModal({
     setError("");
   }
 
-  function toggleTrait(t: string) {
-    setTraits((prev) =>
-      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
+  function toggleTrait(trait: string): void {
+    setTraits((previous) =>
+      previous.includes(trait)
+        ? previous.filter((item) => item !== trait)
+        : [...previous, trait],
     );
   }
 
-  function handleClose() {
+  function handleClose(): void {
     onClose();
   }
 
-  function handleSubmit() {
+  function handleSubmit(): void {
     setError("");
 
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    const trimmedArea = area.trim();
+    const trimmedDescription = description.trim();
+
+    if (!trimmedName) {
       setError("Моля, въведи име.");
       return;
     }
+
+    if (trimmedName.length > FIELD_LIMITS.name) {
+      setError(`Името може да е най-много ${FIELD_LIMITS.name} символа.`);
+      return;
+    }
+
+    if (!animalType) {
+      setError("Моля, избери животно.");
+      return;
+    }
+
     if (!breed) {
       setError("Моля, избери порода.");
       return;
     }
 
+    if (!city.trim()) {
+      setError("Моля, избери град.");
+      return;
+    }
+
+    if (trimmedArea.length > FIELD_LIMITS.area) {
+      setError(`Кварталът може да е най-много ${FIELD_LIMITS.area} символа.`);
+      return;
+    }
+
+    if (trimmedDescription.length > FIELD_LIMITS.description) {
+      setError(
+        `Описанието може да е най-много ${FIELD_LIMITS.description} символа.`,
+      );
+      return;
+    }
+
     const draft: NewPetDraft = {
       photoFile,
-      name: name.trim(),
+      animalType,
+      name: trimmedName,
       breed,
       gender,
       size,
@@ -143,11 +200,11 @@ export default function AddPetModal({
       ageMonths,
       weightKg,
       city,
-      area: area.trim(),
+      area: trimmedArea,
       traits,
       friendlyWithDogs,
       goodWithKids,
-      description: description.trim(),
+      description: trimmedDescription,
     };
 
     onCreate(draft);
@@ -159,58 +216,50 @@ export default function AddPetModal({
 
   return (
     <div className="fixed inset-0 z-50">
-      {/* backdrop */}
-      <div
-        className="absolute inset-0 bg-black/30"
-        onClick={handleClose}
-      />
+      <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
 
-      {/* dialog wrapper */}
       <div className="absolute inset-0 overflow-y-auto">
         <div className="mx-auto flex min-h-full max-w-4xl items-start justify-center px-4 py-10">
           <div
             ref={dialogRef}
-            className="w-full rounded-2xl bg-white shadow-xl ring-1 ring-black/10"
+            className="w-full rounded-2xl bg-white shadow-xl ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-white/10"
           >
-            {/* header */}
             <div className="flex items-start justify-between gap-3 px-6 pt-6">
               <div className="flex items-start gap-3">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    Добави куче
+                  <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    Добави любимец
                   </div>
-                  <div className="text-sm text-gray-600">
-                    Разкажи ни за твоя любимец
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    Разкажи ни за твоя домашен любимец
                   </div>
                 </div>
               </div>
 
               <button
                 onClick={handleClose}
-                className="grid h-9 w-9 place-items-center rounded-full hover:bg-gray-100 active:scale-[0.98] cursor-pointer
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                className="grid h-9 w-9 cursor-pointer place-items-center rounded-full transition hover:bg-gray-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 dark:text-gray-200 dark:hover:bg-white/10"
                 aria-label="Затвори"
+                type="button"
               >
                 ✕
               </button>
             </div>
 
-            <div className="px-6 pb-6 pt-6 space-y-6">
-              {/* error */}
-              {error && (
-                <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100">
+            <div className="space-y-6 px-6 pb-6 pt-6">
+              {error ? (
+                <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20">
                   {error}
                 </div>
-              )}
+              ) : null}
 
-              {/* Снимки */}
-              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
-                <div className="text-sm font-semibold text-gray-900 mb-4">
+              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-neutral-950 dark:ring-white/10">
+                <div className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Снимки
                 </div>
 
                 <div className="flex gap-4">
-                  <label className="group relative flex h-28 w-28 cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 transition hover:bg-gray-100">
+                  <label className="group relative flex h-28 w-28 cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 transition hover:bg-gray-100 dark:border-white/10 dark:bg-neutral-900 dark:hover:bg-white/5">
                     {photoUrl ? (
                       <img
                         src={photoUrl}
@@ -219,8 +268,10 @@ export default function AddPetModal({
                       />
                     ) : (
                       <div className="text-center">
-                        <div className="text-2xl text-gray-500">＋</div>
-                        <div className="text-xs font-semibold text-gray-600">
+                        <div className="text-2xl text-gray-500 dark:text-gray-400">
+                          ＋
+                        </div>
+                        <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">
                           Добави
                         </div>
                       </div>
@@ -230,230 +281,292 @@ export default function AddPetModal({
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0] ?? null;
-                        setPhotoFile(f);
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        setPhotoFile(file);
                       }}
                     />
                   </label>
 
-                  <div className="flex-1 text-sm text-gray-600">
-                    Можеш да добавиш снимка (засега ще я показваме като preview).
-                    По-късно ще я качим във Firebase Storage.
+                  <div className="flex-1 text-sm text-gray-600 dark:text-gray-300">
+                    Качете снимка на вашия любимец. Това помага на потенциалните
+                    гледачи да се запознаят с него и да се доверят на профила ви.
+                    Снимката трябва да бъде в JPEG или PNG формат и не по-голяма
+                    от 5MB. Задължително трябва снимка!
                   </div>
                 </div>
               </section>
 
-              {/* Основна информация */}
-              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
-                <div className="text-sm font-semibold text-gray-900 mb-4">
+              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-neutral-950 dark:ring-white/10">
+                <div className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Основна информация
                 </div>
 
                 <div className="space-y-4">
-                  {/* Име */}
                   <div>
-                    <label className="mb-1 block text-sm font-semibold text-gray-800">
+                    <label className="mb-1 block text-sm font-semibold text-gray-800 dark:text-gray-200">
                       Име <span className="text-orange-500">*</span>
                     </label>
                     <input
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      maxLength={FIELD_LIMITS.name}
+                      onChange={(event) =>
+                        setName(event.target.value.slice(0, FIELD_LIMITS.name))
+                      }
                       placeholder="Как се казва?"
-                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none
-                                 focus:ring-2 focus:ring-orange-200"
+                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:border-white/10 dark:bg-neutral-900 dark:text-gray-100 dark:placeholder:text-gray-500"
+                    />
+                    <div className="mt-1 text-right text-xs text-gray-500 dark:text-gray-400">
+                      {name.length}/{FIELD_LIMITS.name}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      Животно <span className="text-orange-500">*</span>
+                    </label>
+
+                    <SearchableSelect
+                      placeholder="Избери животно"
+                      value={animalType}
+                      options={ANIMAL_TYPES}
+                      onChange={(selectedAnimalType) => {
+                        if (!isAnimalType(selectedAnimalType)) return;
+
+                        setAnimalType(selectedAnimalType);
+                        setBreed("");
+                      }}
+                      emptyMessage="Няма намерени животни"
                     />
                   </div>
 
-                  {/* Порода */}
                   <div>
-                    <label className="mb-1 block text-sm font-semibold text-gray-800">
+                    <label className="mb-1 block text-sm font-semibold text-gray-800 dark:text-gray-200">
                       Порода <span className="text-orange-500">*</span>
                     </label>
-                    <select
+
+                    <SearchableSelect
+                      placeholder={
+                        animalType ? "Избери порода" : "Първо избери животно"
+                      }
                       value={breed}
-                      onChange={(e) => setBreed(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none
-                                 focus:ring-2 focus:ring-orange-200"
-                    >
-                      <option value="">Избери порода</option>
-                      {BREEDS.map((b) => (
-                        <option key={b} value={b}>
-                          {b}
-                        </option>
-                      ))}
-                    </select>
+                      options={breedOptions}
+                      onChange={(selectedBreed) => setBreed(selectedBreed)}
+                      disabled={!animalType}
+                      emptyMessage="Няма намерени породи"
+                    />
                   </div>
 
-                  {/* Пол + Размер */}
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-800">
+                      <label className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">
                         Пол
                       </label>
-                      <select
-                        value={gender}
-                        onChange={(e) => setGender(e.target.value as PetGender)}
-                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none
-                                   focus:ring-2 focus:ring-orange-200"
-                      >
-                        {GENDER_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
+
+                      <div className="flex flex-wrap gap-2">
+                        {GENDER_OPTIONS.map((option) => {
+                          const active = gender === option.value;
+
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => setGender(option.value as PetGender)}
+                              className={cn(
+                                "cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold transition",
+                                active
+                                  ? "bg-orange-500 text-white"
+                                  : "bg-gray-50 text-gray-700 ring-1 ring-black/5 hover:bg-orange-50 dark:bg-neutral-800 dark:text-gray-200 dark:ring-white/10 dark:hover:bg-orange-500/10",
+                              )}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-800">
+                      <label className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">
                         Размер
                       </label>
-                      <select
-                        value={size}
-                        onChange={(e) => setSize(e.target.value as PetSize)}
-                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none
-                                   focus:ring-2 focus:ring-orange-200"
-                      >
-                        {SIZE_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
+
+                      <div className="flex flex-wrap gap-2">
+                        {SIZE_OPTIONS.map((option) => {
+                          const active = size === option.value;
+
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => setSize(option.value as PetSize)}
+                              className={cn(
+                                "cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold transition",
+                                active
+                                  ? "bg-orange-500 text-white"
+                                  : "bg-gray-50 text-gray-700 ring-1 ring-black/5 hover:bg-orange-50 dark:bg-neutral-800 dark:text-gray-200 dark:ring-white/10 dark:hover:bg-orange-500/10",
+                              )}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Години / Месеци / Тегло */}
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-800">
+                      <label className="mb-1 block text-sm font-semibold text-gray-800 dark:text-gray-200">
                         Години
                       </label>
                       <input
                         type="number"
+                        inputMode="numeric"
                         min={0}
+                        max={999}
                         value={ageYears}
-                        onChange={(e) => setAgeYears(Number(e.target.value))}
-                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none
-                                   focus:ring-2 focus:ring-orange-200"
+                        onChange={(event) => {
+                          const raw = Number(event.target.value);
+                          const value = Number.isFinite(raw)
+                            ? Math.min(Math.max(raw, 0), 999)
+                            : 0;
+                          setAgeYears(value);
+                        }}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:border-white/10 dark:bg-neutral-900 dark:text-gray-100"
                       />
                     </div>
+
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-800">
+                      <label className="mb-1 block text-sm font-semibold text-gray-800 dark:text-gray-200">
                         Месеци
                       </label>
                       <input
                         type="number"
+                        inputMode="numeric"
                         min={0}
                         max={11}
                         value={ageMonths}
-                        onChange={(e) => setAgeMonths(Number(e.target.value))}
-                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none
-                                   focus:ring-2 focus:ring-orange-200"
+                        onChange={(event) => {
+                          const raw = Number(event.target.value);
+                          const value = Number.isFinite(raw)
+                            ? Math.min(Math.max(raw, 0), 11)
+                            : 0;
+                          setAgeMonths(value);
+                        }}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:border-white/10 dark:bg-neutral-900 dark:text-gray-100"
                       />
                     </div>
+
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-800">
+                      <label className="mb-1 block text-sm font-semibold text-gray-800 dark:text-gray-200">
                         Тегло (кг)
                       </label>
                       <input
                         type="number"
+                        inputMode="numeric"
                         min={0}
+                        max={999}
                         value={weightKg}
-                        onChange={(e) => setWeightKg(Number(e.target.value))}
-                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none
-                                   focus:ring-2 focus:ring-orange-200"
+                        onChange={(event) => {
+                          const raw = Number(event.target.value);
+                          const value = Number.isFinite(raw)
+                            ? Math.min(Math.max(raw, 0), 999)
+                            : 0;
+                          setWeightKg(value);
+                        }}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:border-white/10 dark:bg-neutral-900 dark:text-gray-100"
                       />
                     </div>
                   </div>
                 </div>
               </section>
 
-              {/* Местоположение */}
-              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
-                <div className="text-sm font-semibold text-gray-900 mb-4">
+              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-neutral-950 dark:ring-white/10">
+                <div className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Местоположение
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-sm font-semibold text-gray-800">
-                      Град
+                    <label className="mb-1 block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      Град <span className="text-orange-500">*</span>
                     </label>
-                    <select
+
+                    <SearchableSelect
+                      placeholder="Избери град"
                       value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none
-                                 focus:ring-2 focus:ring-orange-200"
-                    >
-                      <option value="">Избери град</option>
-                      {CITIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
+                      options={BULGARIAN_CITIES}
+                      onChange={(selectedCity) => setCity(selectedCity)}
+                      emptyMessage="Няма намерени градове"
+                    />
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-sm font-semibold text-gray-800">
-                      Район
+                    <label className="mb-1 block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      Квартал
                     </label>
                     <input
                       value={area}
-                      onChange={(e) => setArea(e.target.value)}
-                      placeholder="Квартал"
-                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none
-                                 focus:ring-2 focus:ring-orange-200"
+                      maxLength={FIELD_LIMITS.area}
+                      onChange={(event) =>
+                        setArea(event.target.value.slice(0, FIELD_LIMITS.area))
+                      }
+                      placeholder="Квартал (по желание)"
+                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:border-white/10 dark:bg-neutral-900 dark:text-gray-100 dark:placeholder:text-gray-500"
                     />
+                    <div className="mt-1 text-right text-xs text-gray-500 dark:text-gray-400">
+                      {area.length}/{FIELD_LIMITS.area}
+                    </div>
                   </div>
                 </div>
               </section>
 
-              {/* Характер */}
-              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
-                <div className="text-sm font-semibold text-gray-900 mb-4">
+              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-neutral-950 dark:ring-white/10">
+                <div className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Характер
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {PET_TRAITS.map((t) => {
-                    const active = traits.includes(t);
+                  {PET_TRAITS.map((trait) => {
+                    const active = traits.includes(trait);
+
                     return (
                       <button
-                        key={t}
+                        key={trait}
                         type="button"
-                        onClick={() => toggleTrait(t)}
+                        onClick={() => toggleTrait(trait)}
                         className={cn(
                           "cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold transition",
                           active
-                            ? "bg-gray-900 text-white"
-                            : "bg-gray-50 text-gray-700 hover:bg-gray-100 ring-1 ring-black/5"
+                            ? "bg-orange-500 text-white"
+                            : "bg-gray-50 text-gray-700 ring-1 ring-black/5 hover:bg-orange-50 dark:bg-neutral-800 dark:text-gray-200 dark:ring-white/10 dark:hover:bg-orange-500/10",
                         )}
                       >
-                        {t}
+                        {trait}
                       </button>
                     );
                   })}
                 </div>
 
                 <div className="mt-5 space-y-3">
-                  <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-800">
+                  <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-800 dark:text-gray-200">
                     <input
                       type="checkbox"
                       checked={friendlyWithDogs}
-                      onChange={(e) => setFriendlyWithDogs(e.target.checked)}
+                      onChange={(event) =>
+                        setFriendlyWithDogs(event.target.checked)
+                      }
                       className="h-4 w-4 accent-orange-500"
                     />
-                    Дружелюбно с други кучета
+                    Дружелюбно с други любимци
                   </label>
 
-                  <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-800">
+                  <label className="flex cursor-pointer items-center gap-3 text-sm text-gray-800 dark:text-gray-200">
                     <input
                       type="checkbox"
                       checked={goodWithKids}
-                      onChange={(e) => setGoodWithKids(e.target.checked)}
+                      onChange={(event) => setGoodWithKids(event.target.checked)}
                       className="h-4 w-4 accent-orange-500"
                     />
                     Подходящо за деца
@@ -461,30 +574,33 @@ export default function AddPetModal({
                 </div>
               </section>
 
-              {/* Описание */}
-              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
-                <div className="text-sm font-semibold text-gray-900 mb-4">
+              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-neutral-950 dark:ring-white/10">
+                <div className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Описание
                 </div>
 
                 <textarea
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  maxLength={FIELD_LIMITS.description}
+                  onChange={(event) =>
+                    setDescription(
+                      event.target.value.slice(0, FIELD_LIMITS.description),
+                    )
+                  }
                   placeholder="Разкажи повече за своя любимец..."
                   rows={4}
-                  className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none
-                             focus:ring-2 focus:ring-orange-200"
+                  className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:border-white/10 dark:bg-neutral-900 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
+                <div className="mt-1 text-right text-xs text-gray-500 dark:text-gray-400">
+                  {description.length}/{FIELD_LIMITS.description}
+                </div>
               </section>
 
-              {/* footer buttons */}
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="cursor-pointer rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900
-                             shadow-sm transition hover:bg-gray-50 active:scale-[0.99]
-                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                  className="cursor-pointer rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-gray-50 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 dark:border-white/10 dark:bg-neutral-950 dark:text-gray-100 dark:hover:bg-white/5"
                 >
                   Отказ
                 </button>
@@ -492,11 +608,9 @@ export default function AddPetModal({
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  className="cursor-pointer rounded-xl bg-gradient-to-r from-orange-400 to-orange-300 px-5 py-3 text-sm font-semibold text-white
-                             shadow-md transition hover:from-orange-500 hover:to-orange-400 active:scale-[0.99]
-                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                  className="cursor-pointer rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-orange-600 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
-                  Добави кучето
+                  Добави любимеца
                 </button>
               </div>
             </div>

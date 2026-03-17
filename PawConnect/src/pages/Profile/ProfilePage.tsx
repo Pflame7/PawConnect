@@ -10,13 +10,17 @@ import {
   setDoc,
   where,
   type FieldValue,
-  type DocumentData,
 } from "firebase/firestore";
 
 import { useAuth } from "../../app/providers/useAuth";
 import { db } from "../../services/firebase";
-import { uploadPetPhoto, uploadUserAvatar, deleteUserAvatar } from "../../services/uploads";
+import {
+  uploadPetPhoto,
+  uploadUserAvatar,
+  deleteUserAvatar,
+} from "../../services/uploads";
 
+import type { AnimalType } from "../../constants/formOptions";
 import EditProfileModal, { type EditableProfile } from "./EditProfileModal";
 import AddPetModal, { type NewPetDraft } from "../../components/pets/AddPetModal";
 
@@ -24,52 +28,28 @@ type FirestoreTimestampLike = { toMillis?: () => number };
 
 type PetDocRead = {
   ownerId?: string;
-
+  animalType?: AnimalType;
   name?: string;
   breed?: string;
   city?: string;
   area?: string;
-
   ageYears?: number;
   ageMonths?: number;
   weightKg?: number;
-
+  gender?: string;
+  size?: string;
   traits?: string[];
   friendlyWithDogs?: boolean;
   goodWithKids?: boolean;
-  description?: string;
-
+  about?: string;
   imageUrl?: string;
   imagePath?: string;
-
   createdAt?: FirestoreTimestampLike | null | undefined;
-};
-
-type PetDocWrite = {
-  ownerId: string;
-
-  name: string;
-  breed: string;
-  city: string;
-  area?: string;
-
-  ageYears: number;
-  ageMonths: number;
-  weightKg: number;
-
-  traits: string[];
-  friendlyWithDogs: boolean;
-  goodWithKids: boolean;
-  description?: string;
-
-  imageUrl?: string;
-  imagePath?: string;
-
-  createdAt: FieldValue;
 };
 
 type PetView = {
   id: string;
+  animalType?: AnimalType;
   name: string;
   breed: string;
   ageYears: number;
@@ -83,62 +63,108 @@ type PetView = {
   createdAtMs: number;
 };
 
-function cn(...classes: Array<string | false | undefined | null>) {
+function cn(...classes: Array<string | false | undefined | null>): string {
   return classes.filter(Boolean).join(" ");
 }
 
-function initials(name: string) {
+function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
-function sizeBadgeFromWeight(weightKg: number) {
-  if (!weightKg) return { label: "—", tone: "bg-gray-100 text-gray-700" };
-  if (weightKg <= 10)
-    return { label: "Малко", tone: "bg-orange-50 text-orange-700" };
-  if (weightKg <= 25)
-    return { label: "Средно", tone: "bg-orange-50 text-orange-700" };
-  if (weightKg <= 45)
-    return { label: "Голямо", tone: "bg-orange-50 text-orange-700" };
-  return { label: "Гигант", tone: "bg-orange-50 text-orange-700" };
+function sizeBadgeFromWeight(weightKg: number): {
+  label: string;
+  tone: string;
+} {
+  if (!weightKg) {
+    return {
+      label: "—",
+      tone: "bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-gray-300",
+    };
+  }
+
+  if (weightKg <= 10) {
+    return {
+      label: "Малко",
+      tone:
+        "bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
+    };
+  }
+
+  if (weightKg <= 25) {
+    return {
+      label: "Средно",
+      tone:
+        "bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
+    };
+  }
+
+  if (weightKg <= 45) {
+    return {
+      label: "Голямо",
+      tone:
+        "bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
+    };
+  }
+
+  return {
+    label: "Гигант",
+    tone:
+      "bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
+  };
 }
 
-function toMillisSafe(v: unknown): number {
-  if (!v || typeof v !== "object") return 0;
-  const maybe = v as FirestoreTimestampLike;
+function toMillisSafe(value: unknown): number {
+  if (!value || typeof value !== "object") return 0;
+
+  const maybe = value as FirestoreTimestampLike;
   if (typeof maybe.toMillis === "function") return maybe.toMillis();
+
   return 0;
+}
+
+function petEmojiFromAnimalType(animalType?: AnimalType): string {
+  if (animalType === "Котка") return "🐱";
+  if (animalType === "Папагал") return "🦜";
+  return "🐶";
 }
 
 function PetCard({ pet, onOpen }: { pet: PetView; onOpen: () => void }) {
   const ageText = useMemo(() => {
     if (!pet.ageYears && !pet.ageMonths) return "";
-    if (pet.ageYears && pet.ageMonths)
+    if (pet.ageYears && pet.ageMonths) {
       return `${pet.ageYears} години и ${pet.ageMonths} мес.`;
+    }
     if (pet.ageYears) return `${pet.ageYears} години`;
     return `${pet.ageMonths} мес.`;
   }, [pet.ageYears, pet.ageMonths]);
 
   const sizeBadge = sizeBadgeFromWeight(pet.weightKg);
+  const petEmoji = petEmojiFromAnimalType(pet.animalType);
 
   return (
     <article
       onClick={onOpen}
-      className="cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition
-                 hover:shadow-md hover:-translate-y-[1px] active:scale-[0.995]"
+      className="cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-[1px] hover:shadow-md active:scale-[0.995] dark:bg-neutral-900 dark:ring-white/10"
     >
-      <div className="relative h-56 w-full bg-gray-100">
+      <div className="relative h-56 w-full bg-gray-100 dark:bg-neutral-800">
         {pet.photoUrl ? (
-          <img src={pet.photoUrl} alt={pet.name} className="h-full w-full object-cover" />
+          <img
+            src={pet.photoUrl}
+            alt={pet.name}
+            className="h-full w-full object-cover"
+          />
         ) : (
-          <div className="grid h-full w-full place-items-center text-5xl">🐶</div>
-        )}
-
-        {(pet.friendlyWithDogs || pet.goodWithKids) && (
-          <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-black/5 backdrop-blur">
-            🐾 Дружелюбно
+          <div className="grid h-full w-full place-items-center text-5xl">
+            {petEmoji}
           </div>
         )}
+
+        {pet.friendlyWithDogs || pet.goodWithKids ? (
+          <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-black/5 backdrop-blur dark:bg-neutral-900/90 dark:text-emerald-300 dark:ring-white/10">
+            🐾 Дружелюбно
+          </div>
+        ) : null}
 
         <div className="absolute bottom-3 left-3 text-white drop-shadow">
           <div className="text-xl font-extrabold">{pet.name}</div>
@@ -147,27 +173,42 @@ function PetCard({ pet, onOpen }: { pet: PetView; onOpen: () => void }) {
 
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold text-gray-900">{pet.breed}</div>
-            <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-600">
-              {ageText && <span>{ageText}</span>}
-              {!!pet.weightKg && <span>{pet.weightKg} кг</span>}
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wide text-orange-600 dark:text-orange-400">
+              {pet.animalType || "Любимец"}
             </div>
-            <div className="mt-2 text-xs text-gray-500">📍 {pet.city}</div>
+
+            <div className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {pet.breed}
+            </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-600 dark:text-gray-300">
+              {ageText ? <span>{ageText}</span> : null}
+              {pet.weightKg > 0 ? <span>{pet.weightKg} кг</span> : null}
+            </div>
+
+            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              📍 {pet.city}
+            </div>
           </div>
 
-          <span className={cn("shrink-0 rounded-full px-3 py-1 text-xs font-semibold", sizeBadge.tone)}>
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-3 py-1 text-xs font-semibold",
+              sizeBadge.tone,
+            )}
+          >
             {sizeBadge.label}
           </span>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          {pet.traits.slice(0, 2).map((t) => (
+          {pet.traits.slice(0, 2).map((trait) => (
             <span
-              key={t}
-              className="rounded-full bg-gray-50 px-3 py-1 text-[11px] font-semibold text-gray-700 ring-1 ring-black/5"
+              key={trait}
+              className="rounded-full bg-gray-50 px-3 py-1 text-[11px] font-semibold text-gray-700 ring-1 ring-black/5 dark:bg-neutral-800 dark:text-gray-300 dark:ring-white/10"
             >
-              {t}
+              {trait}
             </span>
           ))}
         </div>
@@ -194,7 +235,6 @@ export default function ProfilePage() {
           experience?: string;
           pricePerDay?: number;
           services?: string[];
-
           avatarUrl?: string;
           avatarPath?: string;
         }
@@ -216,20 +256,23 @@ export default function ProfilePage() {
       role: (profile?.role as "owner" | "caretaker") ?? "caretaker",
       about: profile?.about ?? "",
       phone: profile?.phone ?? "",
-
       experience: profile?.experience ?? "",
       pricePerDay: Number(profile?.pricePerDay ?? 0),
-      services: Array.isArray(profile?.services) ? profile!.services! : [],
+      services: Array.isArray(profile?.services) ? profile.services : [],
     }),
-    [profile]
+    [profile],
   );
 
   const [draftProfile, setDraftProfile] = useState<EditableProfile>(viewProfile);
 
-  const openEdit = () => {
+  const openEdit = (): void => {
     setDraftProfile(viewProfile);
-    setEditKey((k) => k + 1);
+    setEditKey((value) => value + 1);
     setEditing(true);
+  };
+
+  const openSettings = (): void => {
+    navigate("/settings");
   };
 
   const [pets, setPets] = useState<PetView[]>([]);
@@ -241,14 +284,16 @@ export default function ProfilePage() {
 
     const qRef = query(collection(db, "pets"), where("ownerId", "==", user.uid));
 
-    const unsub = onSnapshot(
+    const unsubscribe = onSnapshot(
       qRef,
-      (snap) => {
-        const list: PetView[] = snap.docs
-          .map((d) => {
-            const data = d.data() as PetDocRead;
+      (snapshot) => {
+        const list: PetView[] = snapshot.docs
+          .map((docItem) => {
+            const data = docItem.data() as PetDocRead;
+
             return {
-              id: d.id,
+              id: docItem.id,
+              animalType: data.animalType,
               name: data.name ?? "",
               breed: data.breed ?? "",
               ageYears: Number(data.ageYears ?? 0),
@@ -256,8 +301,8 @@ export default function ProfilePage() {
               weightKg: Number(data.weightKg ?? 0),
               city: data.city ?? "",
               traits: Array.isArray(data.traits) ? data.traits : [],
-              friendlyWithDogs: !!data.friendlyWithDogs,
-              goodWithKids: !!data.goodWithKids,
+              friendlyWithDogs: Boolean(data.friendlyWithDogs),
+              goodWithKids: Boolean(data.goodWithKids),
               photoUrl: data.imageUrl,
               createdAtMs: toMillisSafe(data.createdAt),
             };
@@ -268,239 +313,279 @@ export default function ProfilePage() {
         setPetsError(null);
         setPetsLoaded(true);
       },
-      (err) => {
-        console.error(err);
+      (error: unknown) => {
+        console.error(error);
         setPets([]);
-        setPetsError("Не успях да заредя кучетата.");
+        setPetsError("Не успях да заредя любимците.");
         setPetsLoaded(true);
-      }
+      },
     );
 
-    return () => unsub();
+    return () => unsubscribe();
   }, [user?.uid]);
 
   const displayRole = viewProfile.role === "owner" ? "Стопанин" : "Гледач";
 
-  async function handleSaveProfile(next: EditableProfile, avatarFile: File | null) {
+  async function handleSaveProfile(
+    next: EditableProfile,
+    avatarFile: File | null,
+  ): Promise<void> {
     if (!user?.uid) return;
 
     try {
       const ref = doc(db, "users", user.uid);
 
-      // ✅ 1) ако има нов avatar -> upload в Supabase
       let avatarUrl = currentAvatarUrl;
       let avatarPath = currentAvatarPath;
 
       if (avatarFile) {
-        // ✅ delete стария (ти искаш да го запазим)
         if (avatarPath) {
           try {
             await deleteUserAvatar(avatarPath);
-          } catch (e) {
-            // не е фатално, просто логваме
-            console.warn("Avatar delete failed:", e);
+          } catch (error: unknown) {
+            console.warn("Avatar delete failed:", error);
           }
         }
 
-        const up = await uploadUserAvatar(avatarFile, user.uid);
-        avatarUrl = up.publicUrl;
-        avatarPath = up.storagePath;
+        const uploadedAvatar = await uploadUserAvatar(avatarFile, user.uid);
+        avatarUrl = uploadedAvatar.publicUrl;
+        avatarPath = uploadedAvatar.storagePath;
       }
 
-      // ✅ 2) update Firestore
       await setDoc(
         ref,
         {
           uid: user.uid,
           email: profile?.email ?? user.email ?? "",
-
           name: next.name,
           city: next.city,
           area: next.area,
           role: next.role,
           about: next.about,
           phone: next.phone,
-
           experience: next.experience,
           pricePerDay: Number(next.pricePerDay ?? 0),
           services: Array.isArray(next.services) ? next.services : [],
-
           avatarUrl,
           avatarPath,
-
           updatedAt: serverTimestamp(),
         },
-        { merge: true }
+        { merge: true },
       );
 
       setEditing(false);
-    } catch (e) {
-      console.error(e);
+    } catch (error: unknown) {
+      console.error(error);
       alert("Не успях да запазя профила. Провери конзолата.");
     }
   }
 
-  async function handleCreatePet(pet: NewPetDraft) {
+  async function handleCreatePet(pet: NewPetDraft): Promise<void> {
     if (!user?.uid) {
       setIsAddPetOpen(false);
       return;
     }
 
     try {
-      let imageUrl: string | undefined;
-      let imagePath: string | undefined;
+      let imageUrl = "";
+      let imagePath = "";
 
       if (pet.photoFile) {
-        const up = await uploadPetPhoto(pet.photoFile, user.uid);
-        imageUrl = up.publicUrl;
-        imagePath = up.storagePath;
+        const uploadedPetPhoto = await uploadPetPhoto(pet.photoFile, user.uid);
+        imageUrl = uploadedPetPhoto.publicUrl;
+        imagePath = uploadedPetPhoto.storagePath;
       }
 
-      const payload: PetDocWrite = {
-        ownerId: user.uid,
+      if (!pet.animalType) {
+        alert("Моля, избери животно.");
+        return;
+      }
 
-        name: pet.name.trim(),
+      const trimmedName = pet.name.trim();
+      const trimmedArea = pet.area.trim();
+      const trimmedDescription = pet.description.trim();
+
+      const payload: Record<string, unknown> = {
+        ownerId: user.uid,
+        animalType: pet.animalType,
+        name: trimmedName,
         breed: pet.breed,
         city: pet.city,
-        area: pet.area.trim() || undefined,
-
         ageYears: Number(pet.ageYears ?? 0),
         ageMonths: Number(pet.ageMonths ?? 0),
         weightKg: Number(pet.weightKg ?? 0),
-
         traits: Array.isArray(pet.traits) ? pet.traits : [],
-        friendlyWithDogs: !!pet.friendlyWithDogs,
-        goodWithKids: !!pet.goodWithKids,
-        description: pet.description.trim() || undefined,
-
-        imageUrl,
-        imagePath,
-
-        createdAt: serverTimestamp(),
+        friendlyWithDogs: Boolean(pet.friendlyWithDogs),
+        goodWithKids: Boolean(pet.goodWithKids),
+        createdAt: serverTimestamp() as FieldValue,
       };
 
-      await addDoc(collection(db, "pets"), payload as unknown as DocumentData);
+      if (trimmedArea) {
+        payload.area = trimmedArea;
+      }
+
+      if (pet.gender) {
+        payload.gender = pet.gender;
+      }
+
+      if (pet.size) {
+        payload.size = pet.size;
+      }
+
+      if (trimmedDescription) {
+        payload.about = trimmedDescription;
+      }
+
+      if (imageUrl) {
+        payload.imageUrl = imageUrl;
+      }
+
+      if (imagePath) {
+        payload.imagePath = imagePath;
+      }
+
+      await addDoc(collection(db, "pets"), payload);
       setIsAddPetOpen(false);
-    } catch (e) {
-      console.error(e);
-      alert("Не успях да добавя кучето. Провери Supabase env/policies.");
+    } catch (error: unknown) {
+      console.error(error);
+      alert("Не успях да добавя любимеца. Провери конзолата.");
     }
   }
 
-  const showPetsLoading = !!user?.uid && !petsLoaded;
+  const showPetsLoading = user?.uid != null && !petsLoaded;
 
   return (
-    <div className="space-y-8">
-      <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-        <div className="h-24 bg-orange-100" />
+    <div className="space-y-8 pb-16">
+      <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10">
+        <div className="h-24 bg-orange-100 dark:bg-orange-500/15" />
 
-        <div className="px-6 pb-6 pt-6">
-          <div className="-mt-6 flex items-center justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="relative">
-                <div className="h-20 w-20 overflow-hidden rounded-2xl bg-gray-200 ring-4 ring-white shadow-sm">
-                  {currentAvatarUrl ? (
-                    <img src={currentAvatarUrl} alt="Avatar" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center text-xl font-bold text-gray-700">
-                      {initials(viewProfile.name || " ")}
-                    </div>
-                  )}
-                </div>
-
-                <div className="absolute -bottom-2 -right-2 grid h-8 w-8 place-items-center rounded-full bg-emerald-500 text-white ring-4 ring-white">
-                  ✓
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="text-2xl font-bold text-gray-900">
-                    {viewProfile.name || "—"}
+        <div className="px-4 pb-6 pt-6 sm:px-6">
+          <div className="-mt-6 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div className="relative shrink-0">
+                  <div className="h-20 w-20 overflow-hidden rounded-2xl bg-gray-200 ring-4 ring-white shadow-sm dark:bg-neutral-800 dark:ring-neutral-900">
+                    {currentAvatarUrl ? (
+                      <img
+                        src={currentAvatarUrl}
+                        alt="Avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-xl font-bold text-gray-700 dark:text-gray-200">
+                        {initials(viewProfile.name || " ")}
+                      </div>
+                    )}
                   </div>
 
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
-                    Верифициран
-                  </span>
+                  <div className="absolute -bottom-2 -right-2 grid h-8 w-8 place-items-center rounded-full bg-emerald-500 text-white ring-4 ring-white dark:ring-neutral-900">
+                    ✓
+                  </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                  <span>📍 {viewProfile.city || "—"}</span>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
-                    {displayRole}
-                  </span>
+                <div className="min-w-0 flex-1 pt-1 sm:pt-2">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="max-w-full whitespace-normal break-all text-2xl font-bold leading-tight text-gray-900 dark:text-gray-100">
+                      {viewProfile.name || "—"}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                    <span>📍 {viewProfile.city || "—"}</span>
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/20">
+                      {displayRole}
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {viewProfile.about ? (
+                <div className="mt-5 break-words whitespace-pre-line text-sm text-gray-700 dark:text-gray-200">
+                  {viewProfile.about}
+                </div>
+              ) : null}
+
+              <div className="mt-5 h-px w-full bg-gray-100 dark:bg-white/10" />
+
+              {viewProfile.role === "caretaker" ? (
+                <>
+                  <div className="mt-4 text-3xl font-extrabold text-gray-900 dark:text-gray-100">
+                    {viewProfile.pricePerDay}
+                    <span className="ml-2 text-base font-medium text-gray-600 dark:text-gray-300">
+                      €/ден
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {viewProfile.services.map((service) => (
+                      <span
+                        key={service}
+                        className="rounded-lg bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700 ring-1 ring-orange-100 dark:bg-orange-500/15 dark:text-orange-300 dark:ring-orange-500/20"
+                      >
+                        {service}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
 
-            <button
-              type="button"
-              onClick={openEdit}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900
-                         shadow-sm transition hover:bg-gray-50 active:scale-[0.99]
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
-            >
-              ✏️ Редактирай
-            </button>
+            <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto lg:flex-col lg:items-end">
+              <button
+                type="button"
+                onClick={openEdit}
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-gray-50 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 dark:border-white/10 dark:bg-neutral-900 dark:text-gray-100 dark:hover:bg-white/5 sm:w-auto"
+              >
+                <span aria-hidden="true">✏️</span>
+                Редактирай
+              </button>
+
+              <button
+                type="button"
+                onClick={openSettings}
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-gray-50 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 dark:border-white/10 dark:bg-neutral-900 dark:text-gray-100 dark:hover:bg-white/5 sm:w-auto"
+              >
+                <span aria-hidden="true">⚙️</span>
+                Настройки
+              </button>
+            </div>
           </div>
-
-          {viewProfile.about && (
-            <div className="mt-5 text-sm text-gray-700">{viewProfile.about}</div>
-          )}
-
-          <div className="mt-5 h-px w-full bg-gray-100" />
-
-          {viewProfile.role === "caretaker" && (
-            <>
-              <div className="mt-4 text-3xl font-extrabold text-gray-900">
-                {viewProfile.pricePerDay}
-                <span className="ml-2 text-base font-medium text-gray-600">лв/ден</span>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                {viewProfile.services.map((s) => (
-                  <span
-                    key={s}
-                    className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100"
-                  >
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
         </div>
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Моите кучета</h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Моите любимци
+          </h2>
 
           <button
             type="button"
             onClick={() => setIsAddPetOpen(true)}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900
-                       shadow-sm transition hover:bg-gray-50 active:scale-[0.99]
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+            className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-gray-50 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 dark:border-white/10 dark:bg-neutral-900 dark:text-gray-100 dark:hover:bg-white/5 sm:w-auto"
           >
-            🐾 Добави куче
+            🐾 Добави любимец
           </button>
         </div>
 
-        {petsError && (
-          <div className="rounded-2xl bg-white p-6 text-sm text-red-600 shadow-sm ring-1 ring-black/5">
+        {petsError ? (
+          <div className="rounded-2xl bg-white p-6 text-sm text-red-600 shadow-sm ring-1 ring-black/5 dark:bg-neutral-900 dark:text-red-400 dark:ring-white/10">
             {petsError}
           </div>
-        )}
+        ) : null}
 
         {showPetsLoading ? (
-          <div className="rounded-2xl bg-white p-6 text-sm text-gray-700 shadow-sm ring-1 ring-black/5">
+          <div className="rounded-2xl bg-white p-6 text-sm text-gray-700 shadow-sm ring-1 ring-black/5 dark:bg-neutral-900 dark:text-gray-200 dark:ring-white/10">
             Зареждане...
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {pets.map((p) => (
-              <PetCard key={p.id} pet={p} onOpen={() => navigate(`/pets/${p.id}`)} />
+            {pets.map((pet) => (
+              <PetCard
+                key={pet.id}
+                pet={pet}
+                onOpen={() => navigate(`/pets/${pet.id}`)}
+              />
             ))}
           </div>
         )}

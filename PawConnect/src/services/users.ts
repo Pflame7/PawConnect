@@ -1,6 +1,11 @@
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import type { UserProfile, UserRole } from "../types/user";
+import type { UserProfile, UserRole, UserSettings } from "../types/user";
+
+const DEFAULT_USER_SETTINGS: UserSettings = {
+  messageNotifications: true,
+  darkMode: false,
+};
 
 export async function createUserProfile(params: {
   uid: string;
@@ -16,17 +21,18 @@ export async function createUserProfile(params: {
     name: params.name.trim(),
     email: params.email.trim().toLowerCase(),
 
-    // ✅ запазваме и region, и city (за да не се чупи UI)
     region: params.region,
     city: params.region,
 
     role: params.role,
 
-    // ✅ default за avatar
     avatarUrl: "",
     avatarPath: "",
 
+    settings: DEFAULT_USER_SETTINGS,
+
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   };
 
   await setDoc(ref, payload, { merge: true });
@@ -35,6 +41,31 @@ export async function createUserProfile(params: {
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const ref = doc(db, "users", uid);
   const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
+
+  if (!snap.exists()) {
+    return null;
+  }
+
   return snap.data() as UserProfile;
+}
+
+export async function updateUserSettings(
+  uid: string,
+  settings: UserSettings,
+): Promise<void> {
+  const ref = doc(db, "users", uid);
+
+  await updateDoc(ref, {
+    settings,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export function getResolvedUserSettings(
+  profile: UserProfile | null,
+): UserSettings {
+  return {
+    messageNotifications: profile?.settings?.messageNotifications ?? true,
+    darkMode: profile?.settings?.darkMode ?? false,
+  };
 }

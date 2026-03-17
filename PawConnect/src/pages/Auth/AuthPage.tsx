@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   createUserWithEmailAndPassword,
@@ -15,7 +15,7 @@ function toMode(value: string | null): AuthMode {
   return value === "register" ? "register" : "login";
 }
 
-function humanizeAuthError(code: string) {
+function humanizeAuthError(code: string): string {
   switch (code) {
     case "auth/invalid-credential":
       return "Грешен имейл или парола.";
@@ -28,6 +28,16 @@ function humanizeAuthError(code: string) {
     default:
       return "Възникна грешка. Опитай отново.";
   }
+}
+
+function forceLightMode(): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  document.documentElement.classList.remove("dark");
+  document.documentElement.style.colorScheme = "light";
+  document.body.classList.remove("dark");
 }
 
 export default function AuthPage() {
@@ -45,7 +55,11 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("owner");
 
-  function setMode(next: AuthMode) {
+  useEffect(() => {
+    forceLightMode();
+  }, []);
+
+  function setMode(next: AuthMode): void {
     setParams((prev) => {
       prev.set("mode", next);
       return prev;
@@ -53,8 +67,8 @@ export default function AuthPage() {
     setError(null);
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
     setError(null);
     setLoading(true);
 
@@ -65,7 +79,6 @@ export default function AuthPage() {
         return;
       }
 
-      // register
       const cred = await createUserWithEmailAndPassword(auth, email, password);
 
       await createUserProfile({
@@ -77,8 +90,7 @@ export default function AuthPage() {
       });
 
       navigate("/", { replace: true });
-    }
-     catch (err: unknown) {
+    } catch (err: unknown) {
       console.error(err);
 
       let code = "";
@@ -93,9 +105,7 @@ export default function AuthPage() {
       }
 
       setError(humanizeAuthError(code));
-    }
-
-     finally {
+    } finally {
       setLoading(false);
     }
   }

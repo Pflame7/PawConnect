@@ -1,3 +1,5 @@
+import type { AnimalType } from "../constants/formOptions";
+
 export type PetSizeGroup = "Малко" | "Средно" | "Голямо" | "Гигант";
 
 export type Pet = {
@@ -5,8 +7,10 @@ export type Pet = {
 
   ownerId: string;
 
+  animalType: AnimalType;
   name: string;
   breed: string;
+
   city: string;
   area?: string;
 
@@ -15,7 +19,6 @@ export type Pet = {
 
   weightKg: number;
 
-  // снимка от Supabase
   imageUrl?: string;
   imagePath?: string;
 

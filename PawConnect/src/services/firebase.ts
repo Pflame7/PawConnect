@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, memoryLocalCache } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDYg9QBYD_IwuV8h-2ChyyjMdtW2V2dYjw",
@@ -14,4 +14,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+/**
+ * Firestore с memory cache (без IndexedDB persistence)
+ * Това избягва crash-овете при refresh + snapshot listeners
+ */
+export const db = initializeFirestore(app, {
+  localCache: memoryLocalCache(),
+});

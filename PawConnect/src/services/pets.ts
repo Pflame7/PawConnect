@@ -12,11 +12,15 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { deletePetPhoto } from "./uploads";
+import type { AnimalType } from "../constants/formOptions";
 
 export type PetCreate = {
   ownerId: string;
+
+  animalType: AnimalType;
   name: string;
   breed: string;
+
   city: string;
   area?: string;
 
@@ -34,21 +38,25 @@ export type PetCreate = {
   about?: string;
 
   imageUrl?: string;
-  imagePath?: string; // Supabase storage path
+  imagePath?: string;
 };
 
 export async function createPet(data: PetCreate) {
   const ref = await addDoc(collection(db, "pets"), {
     ...data,
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
+
   return ref.id;
 }
 
 export async function getPetById(petId: string) {
   const ref = doc(db, "pets", petId);
   const snap = await getDoc(ref);
+
   if (!snap.exists()) return null;
+
   return { id: snap.id, ...(snap.data() as Record<string, unknown>) };
 }
 
@@ -64,7 +72,6 @@ export async function getPetsByOwner(ownerId: string) {
 }
 
 export async function deletePet(petId: string) {
-  // ако има imagePath → чистим снимката от Supabase
   const ref = doc(db, "pets", petId);
   const snap = await getDoc(ref);
 

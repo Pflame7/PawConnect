@@ -23,8 +23,8 @@ export function RolePicker({
           <div
             className={`p-4 border-2 rounded-lg text-center transition ${
               value === "owner"
-                ? "border-blue-600 bg-blue-50"
-                : "border-gray-200 hover:bg-gray-50"
+                ? "border-orange-500 bg-orange-50"
+                : "border-gray-200 hover:border-orange-300 hover:bg-orange-50"
             }`}
           >
             <Dog className="w-8 h-8 mx-auto mb-2" />
@@ -40,8 +40,8 @@ export function RolePicker({
           <div
             className={`p-4 border-2 rounded-lg text-center transition ${
               value === "caretaker"
-                ? "border-blue-600 bg-blue-50"
-                : "border-gray-200 hover:bg-gray-50"
+                ? "border-orange-500 bg-orange-50"
+                : "border-gray-200 hover:border-orange-300 hover:bg-orange-50"
             }`}
           >
             <Heart className="w-8 h-8 mx-auto mb-2" />
