@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 const url = import.meta.env.VITE_SUPABASE_URL as string;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-// Guard: ако env липсват, upload-ите ще се чупят
+// Guard: uploads will break if env vars are missing.
 if (!url || !anon) {
   // eslint-disable-next-line no-console
   console.error(

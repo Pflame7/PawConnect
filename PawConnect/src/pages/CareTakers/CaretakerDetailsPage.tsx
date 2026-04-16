@@ -362,18 +362,7 @@ export default function CaretakerDetailsPage() {
         }
 
         const data = userSnap.data() as DocumentData;
-        const role = toStringSafe(data.role);
 
-        if (role !== "caretaker") {
-          if (!ignore) {
-            setCaretaker(null);
-            setErrText("Този потребител не е гледач.");
-            setLoading(false);
-            setPetsLoading(false);
-            setReviewsLoading(false);
-          }
-          return;
-        }
 
         const mappedCaretaker: CaretakerView = {
           id: userSnap.id,

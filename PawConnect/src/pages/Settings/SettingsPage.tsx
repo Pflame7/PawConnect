@@ -323,7 +323,7 @@ export default function SettingsPage() {
           <SettingsRow title="Име" subtitle={displayName} />
         </SectionCard>
 
-        <SectionCard title="Известия" icon="🔔">
+        <SectionCard title="Известия и персонализиране" icon="🔔">
           <SettingsRow
             title="Съобщения"
             subtitle="Получавай известия при нови съобщения"

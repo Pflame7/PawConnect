@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   addDoc,
@@ -19,7 +19,9 @@ import {
   uploadUserAvatar,
   deleteUserAvatar,
 } from "../../services/uploads";
+import { PetCard } from "../../components/pets/PetCard";
 
+import type { Pet } from "../../types/pet";
 import type { AnimalType } from "../../constants/formOptions";
 import EditProfileModal, { type EditableProfile } from "./EditProfileModal";
 import AddPetModal, { type NewPetDraft } from "../../components/pets/AddPetModal";
@@ -47,71 +49,9 @@ type PetDocRead = {
   createdAt?: FirestoreTimestampLike | null | undefined;
 };
 
-type PetView = {
-  id: string;
-  animalType?: AnimalType;
-  name: string;
-  breed: string;
-  ageYears: number;
-  ageMonths: number;
-  weightKg: number;
-  city: string;
-  traits: string[];
-  friendlyWithDogs: boolean;
-  goodWithKids: boolean;
-  photoUrl?: string;
-  createdAtMs: number;
-};
-
-function cn(...classes: Array<string | false | undefined | null>): string {
-  return classes.filter(Boolean).join(" ");
-}
-
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
-}
-
-function sizeBadgeFromWeight(weightKg: number): {
-  label: string;
-  tone: string;
-} {
-  if (!weightKg) {
-    return {
-      label: "—",
-      tone: "bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-gray-300",
-    };
-  }
-
-  if (weightKg <= 10) {
-    return {
-      label: "Малко",
-      tone:
-        "bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
-    };
-  }
-
-  if (weightKg <= 25) {
-    return {
-      label: "Средно",
-      tone:
-        "bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
-    };
-  }
-
-  if (weightKg <= 45) {
-    return {
-      label: "Голямо",
-      tone:
-        "bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
-    };
-  }
-
-  return {
-    label: "Гигант",
-    tone:
-      "bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
-  };
 }
 
 function toMillisSafe(value: unknown): number {
@@ -123,98 +63,34 @@ function toMillisSafe(value: unknown): number {
   return 0;
 }
 
-function petEmojiFromAnimalType(animalType?: AnimalType): string {
-  if (animalType === "Котка") return "🐱";
-  if (animalType === "Папагал") return "🦜";
-  return "🐶";
+function normalizePetSizeLabel(size: string): string {
+  const normalized = size.trim().toLowerCase();
+
+  switch (normalized) {
+    case "small":
+      return "Малко";
+    case "medium":
+      return "Средно";
+    case "large":
+      return "Голямо";
+    case "giant":
+      return "Гигантско";
+    default:
+      return size;
+  }
 }
 
-function PetCard({ pet, onOpen }: { pet: PetView; onOpen: () => void }) {
-  const ageText = useMemo(() => {
-    if (!pet.ageYears && !pet.ageMonths) return "";
-    if (pet.ageYears && pet.ageMonths) {
-      return `${pet.ageYears} години и ${pet.ageMonths} мес.`;
-    }
-    if (pet.ageYears) return `${pet.ageYears} години`;
-    return `${pet.ageMonths} мес.`;
-  }, [pet.ageYears, pet.ageMonths]);
+function toGenderSafe(value: unknown): Pet["gender"] {
+  if (value === "Мъжко" || value === "Женско") return value;
 
-  const sizeBadge = sizeBadgeFromWeight(pet.weightKg);
-  const petEmoji = petEmojiFromAnimalType(pet.animalType);
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
 
-  return (
-    <article
-      onClick={onOpen}
-      className="cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-[1px] hover:shadow-md active:scale-[0.995] dark:bg-neutral-900 dark:ring-white/10"
-    >
-      <div className="relative h-56 w-full bg-gray-100 dark:bg-neutral-800">
-        {pet.photoUrl ? (
-          <img
-            src={pet.photoUrl}
-            alt={pet.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-5xl">
-            {petEmoji}
-          </div>
-        )}
+    if (normalized === "male" || normalized === "мъжко") return "Мъжко";
+    if (normalized === "female" || normalized === "женско") return "Женско";
+  }
 
-        {pet.friendlyWithDogs || pet.goodWithKids ? (
-          <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-black/5 backdrop-blur dark:bg-neutral-900/90 dark:text-emerald-300 dark:ring-white/10">
-            🐾 Дружелюбно
-          </div>
-        ) : null}
-
-        <div className="absolute bottom-3 left-3 text-white drop-shadow">
-          <div className="text-xl font-extrabold">{pet.name}</div>
-        </div>
-      </div>
-
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-wide text-orange-600 dark:text-orange-400">
-              {pet.animalType || "Любимец"}
-            </div>
-
-            <div className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
-              {pet.breed}
-            </div>
-
-            <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-600 dark:text-gray-300">
-              {ageText ? <span>{ageText}</span> : null}
-              {pet.weightKg > 0 ? <span>{pet.weightKg} кг</span> : null}
-            </div>
-
-            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              📍 {pet.city}
-            </div>
-          </div>
-
-          <span
-            className={cn(
-              "shrink-0 rounded-full px-3 py-1 text-xs font-semibold",
-              sizeBadge.tone,
-            )}
-          >
-            {sizeBadge.label}
-          </span>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          {pet.traits.slice(0, 2).map((trait) => (
-            <span
-              key={trait}
-              className="rounded-full bg-gray-50 px-3 py-1 text-[11px] font-semibold text-gray-700 ring-1 ring-black/5 dark:bg-neutral-800 dark:text-gray-300 dark:ring-white/10"
-            >
-              {trait}
-            </span>
-          ))}
-        </div>
-      </div>
-    </article>
-  );
+  return undefined;
 }
 
 export default function ProfilePage() {
@@ -275,7 +151,7 @@ export default function ProfilePage() {
     navigate("/settings");
   };
 
-  const [pets, setPets] = useState<PetView[]>([]);
+  const [pets, setPets] = useState<Pet[]>([]);
   const [petsLoaded, setPetsLoaded] = useState(false);
   const [petsError, setPetsError] = useState<string | null>(null);
 
@@ -287,29 +163,56 @@ export default function ProfilePage() {
     const unsubscribe = onSnapshot(
       qRef,
       (snapshot) => {
-        const list: PetView[] = snapshot.docs
-          .map((docItem) => {
-            const data = docItem.data() as PetDocRead;
+        const list: Array<Pet & { createdAtMs: number }> = snapshot.docs.map((docItem) => {
+          const data = docItem.data() as PetDocRead;
 
-            return {
-              id: docItem.id,
-              animalType: data.animalType,
-              name: data.name ?? "",
-              breed: data.breed ?? "",
-              ageYears: Number(data.ageYears ?? 0),
-              ageMonths: Number(data.ageMonths ?? 0),
-              weightKg: Number(data.weightKg ?? 0),
-              city: data.city ?? "",
-              traits: Array.isArray(data.traits) ? data.traits : [],
-              friendlyWithDogs: Boolean(data.friendlyWithDogs),
-              goodWithKids: Boolean(data.goodWithKids),
-              photoUrl: data.imageUrl,
-              createdAtMs: toMillisSafe(data.createdAt),
-            };
-          })
-          .sort((a, b) => b.createdAtMs - a.createdAtMs);
+          return {
+            id: docItem.id,
+            ownerId: data.ownerId ?? user.uid,
+            animalType: data.animalType ?? "Куче",
+            name: data.name ?? "",
+            breed: data.breed ?? "",
+            city: data.city ?? "",
+            area: data.area ?? undefined,
+            ageYears: Number(data.ageYears ?? 0),
+            ageMonths: Number(data.ageMonths ?? 0),
+            weightKg: Number(data.weightKg ?? 0),
+            imageUrl: data.imageUrl ?? "",
+            imagePath: data.imagePath ?? undefined,
+            gender: toGenderSafe(data.gender),
+            size: data.size ? normalizePetSizeLabel(data.size) : undefined,
+            friendlyWithDogs: Boolean(data.friendlyWithDogs),
+            goodWithKids: Boolean(data.goodWithKids),
+            traits: Array.isArray(data.traits) ? data.traits : [],
+            about: data.about ?? undefined,
+            createdAtMs: toMillisSafe(data.createdAt),
+          };
+        });
 
-        setPets(list);
+        list.sort((a, b) => b.createdAtMs - a.createdAtMs);
+
+        setPets(
+          list.map((item) => ({
+            id: item.id,
+            ownerId: item.ownerId,
+            animalType: item.animalType,
+            name: item.name,
+            breed: item.breed,
+            city: item.city,
+            area: item.area,
+            ageYears: item.ageYears,
+            ageMonths: item.ageMonths,
+            weightKg: item.weightKg,
+            imageUrl: item.imageUrl,
+            imagePath: item.imagePath,
+            gender: item.gender,
+            size: item.size,
+            friendlyWithDogs: item.friendlyWithDogs,
+            goodWithKids: item.goodWithKids,
+            traits: item.traits,
+            about: item.about,
+          })),
+        );
         setPetsError(null);
         setPetsLoaded(true);
       },
@@ -512,7 +415,7 @@ export default function ProfilePage() {
                   <div className="mt-4 text-3xl font-extrabold text-gray-900 dark:text-gray-100">
                     {viewProfile.pricePerDay}
                     <span className="ml-2 text-base font-medium text-gray-600 dark:text-gray-300">
-                      €/ден
+                      лв/ден
                     </span>
                   </div>
 

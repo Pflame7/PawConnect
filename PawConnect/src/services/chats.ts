@@ -27,9 +27,9 @@ export function buildChatId(a: string, b: string): ChatId {
 }
 
 /**
- * UPSERT без getDoc (за да не удряме permissions при несъществуващ документ).
- * Важно: задаваме lastMessageAt при създаване/отваряне, за да се вижда веднага в списъка
- * (и да работи orderBy("lastMessageAt")).
+ * UPSERT without getDoc to avoid hitting permissions for a missing document.
+ * Important: set lastMessageAt on create/open so the chat appears in the list immediately
+ * and orderBy("lastMessageAt") works.
  */
 export async function ensureChatExists(params: {
   chatId: ChatId;

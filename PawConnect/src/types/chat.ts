@@ -6,13 +6,13 @@ export type MessageId = string;
 export interface UserLite {
   uid: string;
   name: string;
-  avatarUrl: string; // може да е "" ако няма
+  avatarUrl: string; // can be "" when missing
 }
 
 /**
- * Firestore timestamp поля:
- * - при четене от базата идват като Timestamp
- * - при запис често ползваме serverTimestamp() -> FieldValue
+ * Firestore timestamp fields:
+ * - reads from the database return Timestamp
+ * - writes often use serverTimestamp() -> FieldValue
  */
 export type FireTime = Timestamp | FieldValue | null;
 

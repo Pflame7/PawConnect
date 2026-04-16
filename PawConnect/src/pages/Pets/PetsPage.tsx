@@ -55,6 +55,23 @@ function toGenderSafe(value: unknown): Pet["gender"] {
   return undefined;
 }
 
+function normalizePetSizeLabel(size: string): string {
+  const normalized = size.trim().toLowerCase();
+
+  switch (normalized) {
+    case "small":
+      return "Малко";
+    case "medium":
+      return "Средно";
+    case "large":
+      return "Голямо";
+    case "giant":
+      return "Гигантско";
+    default:
+      return size;
+  }
+}
+
 function isAnimalType(value: string): value is AnimalType {
   return ANIMAL_TYPES.includes(value as AnimalType);
 }
@@ -91,7 +108,10 @@ function mapPetDoc(id: string, data: DocumentData): Pet {
     imageUrl: toStringSafe(data.imageUrl),
     imagePath: toStringSafe(data.imagePath) || undefined,
     gender: toGenderSafe(data.gender),
-    size: toStringSafe(data.size) || undefined,
+    size: (() => {
+      const rawSize = toStringSafe(data.size);
+      return rawSize ? normalizePetSizeLabel(rawSize) : undefined;
+    })(),
     friendlyWithDogs: Boolean(data.friendlyWithDogs),
     goodWithKids: Boolean(data.goodWithKids),
     traits: toStringArraySafe(data.traits),
@@ -152,7 +172,10 @@ export default function PetsPage() {
     return publicPets.filter((pet) => pet.animalType === animalType);
   }, [publicPets, animalType]);
 
-  const cities = useMemo(() => citiesFromPets(animalFilteredPets), [animalFilteredPets]);
+  const cities = useMemo(
+    () => citiesFromPets(animalFilteredPets),
+    [animalFilteredPets],
+  );
 
   const breeds = useMemo(() => {
     if (animalType) {

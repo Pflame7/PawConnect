@@ -16,8 +16,8 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 /**
- * Firestore с memory cache (без IndexedDB persistence)
- * Това избягва crash-овете при refresh + snapshot listeners
+ * Firestore with memory cache, without IndexedDB persistence.
+ * This avoids crashes on refresh with snapshot listeners.
  */
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),

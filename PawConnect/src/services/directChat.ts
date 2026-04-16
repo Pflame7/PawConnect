@@ -13,8 +13,8 @@ function readString(v: unknown): string {
 }
 
 /**
- * Опитваме да вземем "lite" профил за другия участник.
- * Ако rules не позволят read, връщаме fallback (пак работи).
+ * Try to fetch the other participant's "lite" profile.
+ * If rules do not allow the read, return a fallback so the flow still works.
  */
 async function getUserLiteByUidSafe(uid: string): Promise<UserLite> {
   try {
@@ -43,7 +43,7 @@ export async function getOrCreateDirectChat(params: {
   const chatId = buildChatId(params.current.uid, params.otherUid);
   const other = await getUserLiteByUidSafe(params.otherUid);
 
-  // ✅ UPSERT чат документ (с участници и lastMessageAt, за да излезе в списъка)
+  // UPSERT the chat document with participants and lastMessageAt so it appears in the list.
   await ensureChatExists({
     chatId,
     participants: [params.current, other],

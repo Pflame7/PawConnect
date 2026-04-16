@@ -28,6 +28,8 @@ export type UserProfile = {
   avatarPath?: string;
 
   verified?: boolean;
+  emailVerifiedAt?: unknown;
+  lastSecurityCheckAt?: unknown;
 
   settings?: UserSettings;
 

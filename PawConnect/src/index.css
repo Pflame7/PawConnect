@@ -2,7 +2,7 @@
 @import "tailwindcss/utilities";
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* базово UX поведение за кликаеми елементи */
+/* Base UX behavior for clickable elements */
 button,
 [role="button"] {
     cursor: pointer;

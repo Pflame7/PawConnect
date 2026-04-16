@@ -11,6 +11,8 @@ import {
 
 import { db } from "../../services/firebase";
 import { useAuth } from "../../app/providers/useAuth";
+import { PetCard } from "../../components/pets/PetCard";
+import { CaretakerCard } from "../../components/caretakers/CaretakerCard";
 import type { Pet } from "../../types/pet";
 import type { Caretaker, CaretakerService } from "../../types/caretaker";
 import type { AnimalType } from "../../constants/formOptions";
@@ -61,7 +63,9 @@ function toStringArraySafe(value: unknown): string[] {
 function toServicesSafe(value: unknown): CaretakerService[] {
   if (!Array.isArray(value)) return [];
 
-  return value.filter((item): item is CaretakerService => typeof item === "string");
+  return value.filter(
+    (item): item is CaretakerService => typeof item === "string",
+  );
 }
 
 function toAnimalTypeSafe(value: unknown): AnimalType {
@@ -70,21 +74,6 @@ function toAnimalTypeSafe(value: unknown): AnimalType {
   }
 
   return "Куче";
-}
-
-function petEmojiFromAnimalType(animalType: AnimalType): string {
-  if (animalType === "Котка") return "🐱";
-  if (animalType === "Папагал") return "🦜";
-  return "🐶";
-}
-
-function ageTextFromPet(ageYears: number, ageMonths?: number): string {
-  const months = Number(ageMonths ?? 0);
-
-  if (!ageYears && !months) return "Възраст не е посочена";
-  if (ageYears && months) return `${ageYears} години и ${months} мес.`;
-  if (ageYears) return `${ageYears} години`;
-  return `${months} мес.`;
 }
 
 function shuffleArray<T>(items: T[]): T[] {
@@ -126,6 +115,23 @@ function takePreferredByCity<T extends { city: string }>(
   return [...shuffleArray(sameCity), ...shuffleArray(rest)].slice(0, limit);
 }
 
+function normalizePetSizeLabel(size: string): string {
+  const normalized = size.trim().toLowerCase();
+
+  switch (normalized) {
+    case "small":
+      return "Малко";
+    case "medium":
+      return "Средно";
+    case "large":
+      return "Голямо";
+    case "giant":
+      return "Гигантско";
+    default:
+      return size;
+  }
+}
+
 function mapPetDoc(petId: string, data: FirestoreDocData): Pet {
   return {
     id: petId,
@@ -145,7 +151,10 @@ function mapPetDoc(petId: string, data: FirestoreDocData): Pet {
       const gender = toStringSafe(data.gender);
       return gender === "Мъжко" || gender === "Женско" ? gender : undefined;
     })(),
-    size: toStringSafe(data.size) || undefined,
+    size: (() => {
+      const rawSize = toStringSafe(data.size);
+      return rawSize ? normalizePetSizeLabel(rawSize) : undefined;
+    })(),
     friendlyWithDogs: toBooleanSafe(data.friendlyWithDogs),
     goodWithKids: toBooleanSafe(data.goodWithKids),
     traits: toStringArraySafe(data.traits),
@@ -209,7 +218,7 @@ function mapCaretakerDoc(
     name: toStringSafe(data.name) || "Без име",
     city: toStringSafe(data.city) || toStringSafe(data.region) || "—",
     area: toStringSafe(data.area) || undefined,
-    avatarUrl: toStringSafe(data.avatarUrl) || "https://via.placeholder.com/96",
+    avatarUrl: toStringSafe(data.avatarUrl),
     verified: toBooleanSafe(data.verified),
     pricePerDay: toNumberSafe(data.pricePerDay),
     rating: aggregate?.rating ?? 0,
@@ -245,171 +254,6 @@ function ActionCard({
       <span className="text-3xl">{icon}</span>
       <span className="break-words text-lg font-bold">{title}</span>
     </button>
-  );
-}
-
-function PetSuggestionCard({
-  pet,
-  onOpen,
-}: {
-  pet: Pet;
-  onOpen: () => void;
-}) {
-  const petEmoji = petEmojiFromAnimalType(pet.animalType);
-
-  return (
-    <article
-      onClick={onOpen}
-      className="cursor-pointer overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-[1px] hover:shadow-md dark:bg-neutral-900 dark:ring-white/10"
-    >
-      <div className="relative h-56 w-full bg-gray-100 dark:bg-neutral-800">
-        {pet.imageUrl ? (
-          <img
-            src={pet.imageUrl}
-            alt={pet.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-6xl">
-            {petEmoji}
-          </div>
-        )}
-
-        {pet.traits && pet.traits.length > 0 ? (
-          <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-black/5 backdrop-blur dark:bg-neutral-900/90 dark:text-emerald-300 dark:ring-white/10">
-            {pet.traits[0]}
-          </div>
-        ) : null}
-
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-4 pb-4 pt-10">
-          <div className="break-words text-3xl font-extrabold text-white">
-            {pet.name}
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="break-words text-lg font-bold text-gray-900 dark:text-gray-100">
-              {pet.breed}
-            </div>
-            <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              {ageTextFromPet(pet.ageYears, pet.ageMonths)} · {pet.weightKg} кг
-            </div>
-          </div>
-
-          {pet.size ? (
-            <span className="shrink-0 rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700 ring-1 ring-orange-100 dark:bg-orange-500/15 dark:text-orange-300 dark:ring-orange-500/20">
-              {pet.size}
-            </span>
-          ) : null}
-        </div>
-
-        <div className="text-sm text-gray-600 dark:text-gray-300">
-          📍 {pet.city}
-          {pet.area ? `, ${pet.area}` : ""}
-        </div>
-
-        {pet.about ? (
-          <div className="line-clamp-2 break-words text-sm text-gray-700 dark:text-gray-200">
-            {pet.about}
-          </div>
-        ) : null}
-      </div>
-    </article>
-  );
-}
-
-function CaretakerSuggestionCard({
-  caretaker,
-  onOpen,
-  onConnect,
-}: {
-  caretaker: Caretaker;
-  onOpen: () => void;
-  onConnect: () => void;
-}) {
-  return (
-    <article
-      onClick={onOpen}
-      className="cursor-pointer overflow-hidden rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 transition hover:-translate-y-[1px] hover:shadow-md dark:bg-neutral-900 dark:ring-white/10"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-1 items-start gap-4">
-          <img
-            src={caretaker.avatarUrl}
-            alt={caretaker.name}
-            className="h-14 w-14 shrink-0 rounded-2xl object-cover ring-1 ring-black/5 dark:ring-white/10"
-          />
-
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="truncate text-xl font-bold text-gray-900 dark:text-gray-100">
-                {caretaker.name}
-              </div>
-
-              {caretaker.verified ? (
-                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/20">
-                  Верифициран
-                </span>
-              ) : null}
-            </div>
-
-            <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              📍 {caretaker.city}
-              {caretaker.area ? `, ${caretaker.area}` : ""}
-            </div>
-
-            <div className="mt-3 line-clamp-2 break-words text-sm text-gray-700 dark:text-gray-200">
-              {caretaker.shortBio}
-            </div>
-          </div>
-        </div>
-
-        <div className="shrink-0 text-right">
-          <div className="inline-flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-100 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/20">
-            ⭐ {caretaker.rating.toFixed(1)}
-          </div>
-          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            ({caretaker.reviewsCount})
-          </div>
-        </div>
-      </div>
-
-      {caretaker.services.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {caretaker.services.slice(0, 3).map((service) => (
-            <span
-              key={service}
-              className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-100 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-500/20"
-            >
-              {service}
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-white/10">
-        <div className="min-w-0 text-sm">
-          <span className="text-3xl font-extrabold text-gray-900 dark:text-gray-100">
-            {caretaker.pricePerDay}
-          </span>{" "}
-          <span className="text-gray-600 dark:text-gray-300">лв/ден</span>
-        </div>
-
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onConnect();
-          }}
-          className="shrink-0 cursor-pointer rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
-        >
-          Свържи се
-        </button>
-      </div>
-    </article>
   );
 }
 
@@ -568,7 +412,7 @@ export default function HomePage() {
     <div className="mx-auto max-w-7xl space-y-10 overflow-x-hidden px-4 pb-24 pt-6">
       <section className="min-w-0 space-y-3">
         <h1 className="break-words text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100 sm:text-4xl">
-          Здравей, {profile.name}! <span className="ml-1">👋</span>
+          Здравей, {profile.name}! <span className="ml-1"></span>
         </h1>
 
         <div className="break-words text-base text-gray-600 dark:text-gray-300 sm:text-lg">
@@ -586,7 +430,7 @@ export default function HomePage() {
 
         <ActionCard
           title="Намери гледач"
-          icon="🧑‍🤝‍🧑"
+          icon="👫"
           gradientClassName="bg-gradient-to-br from-emerald-500 to-teal-500"
           onClick={() => navigate("/caretakers")}
         />
@@ -617,7 +461,7 @@ export default function HomePage() {
         {suggestedPets.length > 0 ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {suggestedPets.map((pet) => (
-              <PetSuggestionCard
+              <PetCard
                 key={pet.id}
                 pet={pet}
                 onOpen={() => navigate(`/pets/${pet.id}`)}
@@ -642,11 +486,10 @@ export default function HomePage() {
         {suggestedCaretakers.length > 0 ? (
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             {suggestedCaretakers.map((caretaker) => (
-              <CaretakerSuggestionCard
+              <CaretakerCard
                 key={caretaker.id}
                 caretaker={caretaker}
                 onOpen={() => navigate(`/caretakers/${caretaker.id}`)}
-                onConnect={() => navigate("/chats")}
               />
             ))}
           </div>

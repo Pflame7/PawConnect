@@ -29,6 +29,8 @@ export async function createUserProfile(params: {
     avatarUrl: "",
     avatarPath: "",
 
+    verified: false,
+
     settings: DEFAULT_USER_SETTINGS,
 
     createdAt: serverTimestamp(),
@@ -57,6 +59,25 @@ export async function updateUserSettings(
 
   await updateDoc(ref, {
     settings,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function markUserEmailVerified(uid: string): Promise<void> {
+  const ref = doc(db, "users", uid);
+
+  await updateDoc(ref, {
+    verified: true,
+    emailVerifiedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateUserSecurityCheck(uid: string): Promise<void> {
+  const ref = doc(db, "users", uid);
+
+  await updateDoc(ref, {
+    lastSecurityCheckAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 }

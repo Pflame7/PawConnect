@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AuthPage from "../../pages/Auth/AuthPage";
+import VerifyEmailPage from "../../pages/Auth/VerifyEmailPage";
+import SecurityCheckPage from "../../pages/Auth/SecurityCheckPage";
 import { useAuth } from "../providers/useAuth";
 import { AppShell } from "../layouts/AppShell";
 
@@ -12,28 +14,139 @@ import PetDetailsPage from "../../pages/Pets/PetDetailsPage";
 import CaretakerDetailsPage from "../../pages/CareTakers/CaretakerDetailsPage";
 import SettingsPage from "../../pages/Settings/SettingsPage";
 
-
-
-
 function Protected({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isEmailVerified, needsSecurityCheck } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center text-sm text-zinc-600">
         Зареждане...
       </div>
     );
   }
 
-  if (!user) return <Navigate to="/auth?mode=login" replace />;
+  if (!user) {
+    return <Navigate to="/auth?mode=login" replace />;
+  }
+
+  if (!isEmailVerified) {
+    return <Navigate to="/verify-email" replace />;
+  }
+
+  if (needsSecurityCheck) {
+    return <Navigate to="/security-check" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function PublicAuthOnly({ children }: { children: React.ReactNode }) {
+  const { user, loading, isEmailVerified, needsSecurityCheck } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-zinc-600">
+        Зареждане...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <>{children}</>;
+  }
+
+  if (!isEmailVerified) {
+    return <Navigate to="/verify-email" replace />;
+  }
+
+  if (needsSecurityCheck) {
+    return <Navigate to="/security-check" replace />;
+  }
+
+  return <Navigate to="/" replace />;
+}
+
+function VerifyEmailGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading, isEmailVerified, needsSecurityCheck } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-zinc-600">
+        Зареждане...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth?mode=login" replace />;
+  }
+
+  if (isEmailVerified && needsSecurityCheck) {
+    return <Navigate to="/security-check" replace />;
+  }
+
+  if (isEmailVerified) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function SecurityCheckGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading, isEmailVerified, needsSecurityCheck } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-zinc-600">
+        Зареждане...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth?mode=login" replace />;
+  }
+
+  if (!isEmailVerified) {
+    return <Navigate to="/verify-email" replace />;
+  }
+
+  if (!needsSecurityCheck) {
+    return <Navigate to="/" replace />;
+  }
+
   return <>{children}</>;
 }
 
 export function AppRouter() {
   return (
     <Routes>
-      <Route path="/auth" element={<AuthPage />} />
+      <Route
+        path="/auth"
+        element={
+          <PublicAuthOnly>
+            <AuthPage />
+          </PublicAuthOnly>
+        }
+      />
+
+      <Route
+        path="/verify-email"
+        element={
+          <VerifyEmailGuard>
+            <VerifyEmailPage />
+          </VerifyEmailGuard>
+        }
+      />
+
+      <Route
+        path="/security-check"
+        element={
+          <SecurityCheckGuard>
+            <SecurityCheckPage />
+          </SecurityCheckGuard>
+        }
+      />
 
       <Route
         path="/"
@@ -57,4 +170,3 @@ export function AppRouter() {
     </Routes>
   );
 }
-
