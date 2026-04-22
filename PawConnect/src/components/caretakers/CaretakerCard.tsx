@@ -88,7 +88,7 @@ export function CaretakerCard({
           <span className="text-3xl font-extrabold text-gray-900 dark:text-gray-100">
             {caretaker.pricePerDay}
           </span>{" "}
-          <span className="text-gray-600 dark:text-gray-300">лв/ден</span>
+          <span className="text-gray-600 dark:text-gray-300">€/ден</span>
         </div>
 
         <div

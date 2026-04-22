@@ -415,7 +415,7 @@ export default function ProfilePage() {
                   <div className="mt-4 text-3xl font-extrabold text-gray-900 dark:text-gray-100">
                     {viewProfile.pricePerDay}
                     <span className="ml-2 text-base font-medium text-gray-600 dark:text-gray-300">
-                      лв/ден
+                      €/ден
                     </span>
                   </div>
 

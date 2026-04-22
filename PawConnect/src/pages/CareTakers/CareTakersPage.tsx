@@ -27,11 +27,11 @@ function uniqueSorted(values: string[]): string[] {
 
 const PRICE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "", label: "Без ограничение" },
-  { value: "15", label: "До 15 лв/ден" },
-  { value: "20", label: "До 20 лв/ден" },
-  { value: "30", label: "До 30 лв/ден" },
-  { value: "40", label: "До 40 лв/ден" },
-  { value: "50", label: "До 50 лв/ден" },
+  { value: "15", label: "До 15 €/ден" },
+  { value: "20", label: "До 20 €/ден" },
+  { value: "30", label: "До 30 €/ден" },
+  { value: "40", label: "До 40 €/ден" },
+  { value: "50", label: "До 50 €/ден" },
 ];
 
 function toStringSafe(value: unknown): string {
